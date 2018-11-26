@@ -7,8 +7,6 @@ use Drupal\Core\Routing\RouteProviderInterface;
 use Drupal\Core\Routing\RouteSubscriberBase;
 use Drupal\Core\Routing\RoutingEvents;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\og\Event\OgAdminRoutesEvent;
-use Drupal\og\Event\OgAdminRoutesEventInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
@@ -74,7 +72,7 @@ class RouteSubscriber extends RouteSubscriberBase {
       }
 
       $entity_type_id = $entity_type->id();
-      $route_name = "entity.$entity_type_id.og_admin_routes";
+      $route_name = "entity.$entity_type_id.og_admin";
       $route = new Route($og_admin_path);
 
       $route
@@ -86,7 +84,7 @@ class RouteSubscriber extends RouteSubscriberBase {
           '_og_user_access_group' => 'administer group',
         ])
         ->setOption('parameters', [
-          $entity_type_id => ['type' => 'entity:' . $entity_type_id],
+          'group' => ['type' => 'entity:' . $entity_type_id],
         ])
         // As the above parameters doesn't send the entity,
         // so we will have to use the Route matcher to extract it.
@@ -95,34 +93,8 @@ class RouteSubscriber extends RouteSubscriberBase {
 
       $collection->add($route_name, $route);
 
-      // Add the routes defined in the event subscribers.
-      $this->createRoutesFromEventSubscribers($og_admin_path, $entity_type_id, $collection);
-
     }
 
-  }
-
-  /**
-   * Add all the OG admin items to the route collection.
-   *
-   * @param string $og_admin_path
-   *   The OG admin path.
-   * @param string $entity_type_id
-   *   The entity type ID.
-   * @param \Symfony\Component\Routing\RouteCollection $collection
-   *   The route collection object.
-   */
-  protected function createRoutesFromEventSubscribers($og_admin_path, $entity_type_id, RouteCollection $collection) {
-    $event = new OgAdminRoutesEvent();
-    $this->eventDispatcher->dispatch(OgAdminRoutesEventInterface::EVENT_NAME, $event);
-
-    foreach ($event->getRoutes($entity_type_id) as $name => $route_info) {
-      // Add the parent route.
-      $parent_route_name = "entity.$entity_type_id.og_admin_routes.$name";
-      $parent_path = $og_admin_path . '/' . $route_info['path'];
-
-      $this->addRoute($collection, $parent_route_name, $parent_path, $route_info);
-    }
   }
 
   /**
