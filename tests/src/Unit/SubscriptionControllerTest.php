@@ -5,6 +5,7 @@ namespace Drupal\Tests\og\Unit;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityFormBuilderInterface;
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\og\Controller\SubscriptionController;
@@ -51,6 +52,13 @@ class SubscriptionControllerTest extends UnitTestCase {
   protected $ogAccess;
 
   /**
+   * The mocked messenger service.
+   *
+   * @var \Drupal\Core\Messenger\MessengerInterface|\Prophecy\Prophecy\ObjectProphecy
+   */
+  protected $messenger;
+
+  /**
    * The OG membership entity.
    *
    * @var \Drupal\og\OgMembershipInterface|\Prophecy\Prophecy\ObjectProphecy
@@ -79,16 +87,18 @@ class SubscriptionControllerTest extends UnitTestCase {
     $this->group = $this->prophesize(ContentEntityInterface::class);
     $this->membershipManager = $this->prophesize(MembershipManagerInterface::class);
     $this->ogAccess = $this->prophesize(OgAccessInterface::class);
+    $this->messenger = $this->prophesize(MessengerInterface::class);
     $this->ogMembership = $this->prophesize(OgMembershipInterface::class);
     $this->url = $this->prophesize(Url::class);
     $this->user = $this->prophesize(AccountInterface::class);
-
+    $this->messenger = $this->prophesize(MessengerInterface::class);
     // Set the container for the string translation service.
     $container = new ContainerBuilder();
     $container->set('current_user', $this->user->reveal());
     $container->set('entity.form_builder', $this->entityFormBuilder->reveal());
     $container->set('og.membership_manager', $this->membershipManager->reveal());
     $container->set('string_translation', $this->getStringTranslationStub());
+    $container->set('messenger', $this->messenger->reveal());
     \Drupal::setContainer($container);
 
   }
@@ -255,21 +265,8 @@ class SubscriptionControllerTest extends UnitTestCase {
    * Invoke the unsubscribe method.
    */
   protected function unsubscribe() {
-    $controller = new SubscriptionController($this->ogAccess->reveal());
+    $controller = new SubscriptionController($this->ogAccess->reveal(), $this->messenger->reveal());
     $controller->unsubscribe($this->group->reveal());
-  }
-
-}
-
-// @todo Delete after https://www.drupal.org/node/1858196 is in.
-namespace Drupal\og\Controller;
-
-if (!function_exists('drupal_set_message')) {
-
-  /**
-   * Mocking for drupal_set_message().
-   */
-  function drupal_set_message() {
   }
 
 }

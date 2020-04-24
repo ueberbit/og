@@ -34,6 +34,7 @@ class SelectionHandlerTest extends KernelTestBase {
     'entity_reference',
     'node',
     'og',
+    'options',
   ];
 
   /**
@@ -82,7 +83,7 @@ class SelectionHandlerTest extends KernelTestBase {
     $this->installEntitySchema('og_membership');
     $this->installEntitySchema('user');
     $this->installEntitySchema('node');
-    $this->installSchema('system', 'sequences');
+    $this->installSchema('system', ['sequences']);
 
     // Setting up variables.
     $this->groupBundle = mb_strtolower($this->randomMachineName());
@@ -133,14 +134,15 @@ class SelectionHandlerTest extends KernelTestBase {
   /**
    * Testing OG selection handler results.
    *
-   * We need to verify that each user get the groups he own in the normal widget
-   * and the other users group's in the other groups widget and vice versa.
+   * We need to verify that each user gets the groups they own in the normal
+   * widget and the other users' groups in the other groups widget and vice
+   * versa.
    */
   public function testSelectionHandlerResults() {
     $user1_groups = $this->createGroups(2, $this->user1);
     $user2_groups = $this->createGroups(2, $this->user2);
 
-    // Checking that the user get the groups he mange.
+    // Check that users get the groups they manage.
     $this->setCurrentAccount($this->user1);
     $groups = $this->selectionHandler->getReferenceableEntities();
     $this->assertEquals($user1_groups, array_keys($groups[$this->groupBundle]));

@@ -17,6 +17,7 @@ use Drupal\og\Entity\OgRole;
 use Drupal\og\Og;
 use Drupal\og\OgGroupAudienceHelperInterface;
 use Drupal\og\OgMembershipInterface;
+use Drupal\og\OgMembershipTypeInterface;
 use Drupal\og\OgRoleInterface;
 use Drupal\system\Entity\Action;
 use Drupal\user\EntityOwnerInterface;
@@ -53,11 +54,7 @@ function og_entity_insert(EntityInterface $entity) {
 
   // Other modules that implement hook_entity_insert() might already have
   // created a membership ahead of us.
-  if (!Og::getMembership($entity, $entity->getOwner(), [
-    OgMembershipInterface::STATE_ACTIVE,
-    OgMembershipInterface::STATE_PENDING,
-    OgMembershipInterface::STATE_BLOCKED,
-  ])) {
+  if (!Og::getMembership($entity, $entity->getOwner(), OgMembershipInterface::ALL_STATES)) {
     $membership = Og::createMembership($entity, $entity->getOwner());
     $membership->save();
   }
@@ -175,6 +172,47 @@ function og_entity_access(EntityInterface $entity, $operation, AccountInterface 
   }
 
   return AccessResult::forbidden();
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_access().
+ */
+function og_og_membership_type_access(OgMembershipTypeInterface $entity, $operation, AccountInterface $account) {
+  // Do not allow deleting the default membership type.
+  if ($operation === 'delete' && $entity->id() === OgMembershipInterface::TYPE_DEFAULT) {
+    return AccessResult::forbidden();
+  }
+
+  // If the user has permission to administer all groups, allow access.
+  if ($account->hasPermission('administer group')) {
+    return AccessResult::allowed();
+  }
+
+  return AccessResult::forbidden();
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_access().
+ */
+function og_og_membership_access(OgMembershipInterface $entity, $operation, AccountInterface $account) {
+  $group = $entity->getGroup();
+
+  // If there's a group owner, don't let them leave.
+  if (
+    isset($group_fields['uid'])
+    && $operation === 'delete'
+    && $group_fields['uid']->entity->id() === $entity->getOwner()->id()
+  ) {
+    return AccessResult::forbidden();
+  }
+
+  // Ensure that there's at least one member in the group.
+  if ($operation === 'delete' && \Drupal::service('og.membership_manager')->getGroupMembershipCount($group) === 1) {
+    return AccessResult::forbidden();
+  }
+
+  return \Drupal::service('og.access')
+    ->userAccess($entity->getGroup(), 'manage members');
 }
 
 /**
@@ -375,6 +413,11 @@ function og_og_role_insert(OgRoleInterface $role) {
   // Create actions to add or remove the role, except for the required default
   // roles 'member' and 'non-member'. These cannot be added or removed.
   if ($role->getRoleType() === OgRoleInterface::ROLE_TYPE_REQUIRED) {
+    return;
+  }
+
+  // Do not create config while config import is in progress.
+  if (\Drupal::isConfigSyncing()) {
     return;
   }
 

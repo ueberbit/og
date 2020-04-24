@@ -18,7 +18,14 @@ class OgStandardReferenceItemTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['user', 'entity_test', 'field', 'og', 'system'];
+  public static $modules = [
+    'user',
+    'entity_test',
+    'field',
+    'og',
+    'options',
+    'system',
+  ];
 
   protected $bundles;
   protected $fieldName;
@@ -35,7 +42,7 @@ class OgStandardReferenceItemTest extends KernelTestBase {
     $this->installEntitySchema('entity_test');
     $this->installEntitySchema('og_membership');
     $this->installEntitySchema('user');
-    $this->installSchema('system', 'sequences');
+    $this->installSchema('system', ['sequences']);
 
     // Create several bundles.
     for ($i = 0; $i <= 2; $i++) {

@@ -3,6 +3,8 @@
 namespace Drupal\og\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\og\OgMembershipInterface;
 use Drupal\og\OgMembershipTypeInterface;
 
 /**
@@ -20,11 +22,31 @@ use Drupal\og\OgMembershipTypeInterface;
  * @ConfigEntityType(
  *   id = "og_membership_type",
  *   label = @Translation("OG membership type"),
+ *   handlers = {
+ *     "access" = "Drupal\Core\Entity\EntityAccessControlHandler",
+ *     "form" = {
+ *       "add" = "Drupal\og\Form\OgMembershipTypeForm",
+ *       "edit" = "Drupal\og\Form\OgMembershipTypeForm",
+ *       "delete" = "Drupal\Core\Entity\EntityDeleteForm"
+ *     },
+ *     "list_builder" = "Drupal\og\OgMembershipTypeListBuilder"
+ *   },
+ *   admin_permission = "administer group",
  *   config_prefix = "og_membership_type",
  *   bundle_of = "og_membership",
  *   entity_keys = {
  *     "id" = "type",
  *     "label" = "name"
+ *   },
+ *   config_export = {
+ *     "type",
+ *     "name",
+ *     "description"
+ *   },
+ *   links = {
+ *     "edit-form" = "/admin/structure/membership-types/manage/{membership_type}",
+ *     "delete-form" = "/admin/structure/membership-types/manage/{membership_type}/delete",
+ *     "collection" = "/admin/structure/membership-types",
  *   }
  * )
  */
@@ -40,6 +62,42 @@ class OgMembershipType extends ConfigEntityBase implements OgMembershipTypeInter
    */
   public function id() {
     return $this->type;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function save() {
+    $status = parent::save();
+
+    if (\Drupal::isConfigSyncing()) {
+      // Do not create config while config import is in progress.
+      return;
+    }
+
+    if ($status === SAVED_NEW) {
+      FieldConfig::create([
+        'field_name' => 'og_membership_request',
+        'entity_type' => 'og_membership',
+        'bundle' => $this->id(),
+        'label' => 'Request Membership',
+        'description' => 'Explain the motivation for your request to join this group.',
+        'translatable' => TRUE,
+        'settings' => [],
+      ])->save();
+    }
+
+    return $status;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function delete() {
+    if ($this->id() === OgMembershipInterface::TYPE_DEFAULT && !\Drupal::isConfigSyncing()) {
+      throw new \Exception("The default OG membership type cannot be deleted.");
+    }
+    parent::delete();
   }
 
 }

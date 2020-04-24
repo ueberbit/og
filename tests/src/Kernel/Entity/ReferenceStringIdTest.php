@@ -17,7 +17,14 @@ class ReferenceStringIdTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['user', 'entity_test', 'field', 'og', 'system'];
+  public static $modules = [
+    'user',
+    'entity_test',
+    'field',
+    'og',
+    'options',
+    'system',
+  ];
 
   /**
    * Array of test bundles. The first is a group, the second group content.
@@ -51,7 +58,7 @@ class ReferenceStringIdTest extends KernelTestBase {
     $this->installEntitySchema('entity_test_string_id');
     $this->installEntitySchema('og_membership');
     $this->installEntitySchema('user');
-    $this->installSchema('system', 'sequences');
+    $this->installSchema('system', ['sequences']);
 
     // Create two bundles, one will serve as group, the other as group content.
     for ($i = 0; $i < 2; $i++) {

@@ -26,6 +26,7 @@ class GetUserGroupsTest extends KernelTestBase {
     'user',
     'field',
     'og',
+    'options',
     'entity_test',
   ];
 
@@ -88,7 +89,7 @@ class GetUserGroupsTest extends KernelTestBase {
     $this->installEntitySchema('og_membership');
     $this->installEntitySchema('user');
     $this->installEntitySchema('entity_test');
-    $this->installSchema('system', 'sequences');
+    $this->installSchema('system', ['sequences']);
 
     $this->groupBundle = mb_strtolower($this->randomMachineName());
     $this->groupContentBundle = mb_strtolower($this->randomMachineName());

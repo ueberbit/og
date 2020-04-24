@@ -4,12 +4,15 @@ namespace Drupal\og\Form;
 
 use Drupal\Core\Entity\ContentEntityDeleteForm;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\Url;
 
 /**
  * Provides a confirmation form for unsubscribing form a group.
  */
 class GroupUnsubscribeConfirmForm extends ContentEntityDeleteForm {
+
+  use MessengerTrait;
 
   /**
    * {@inheritdoc}
@@ -62,7 +65,7 @@ class GroupUnsubscribeConfirmForm extends ContentEntityDeleteForm {
     $form_state->setRedirectUrl($redirect);
 
     $membership->delete();
-    drupal_set_message($this->t('You have unsubscribed from the group.'));
+    $this->messenger()->addMessage($this->t('You have unsubscribed from the group.'));
   }
 
 }

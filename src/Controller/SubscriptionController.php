@@ -5,7 +5,9 @@ namespace Drupal\og\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Url;
+use Drupal\og\Og;
 use Drupal\og\OgAccessInterface;
 use Drupal\og\OgMembershipInterface;
 use Drupal\og\OgMembershipTypeInterface;
@@ -14,13 +16,11 @@ use Drupal\user\EntityOwnerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Drupal\og\Og;
 
 /**
  * Controller for OG subscription routes.
  */
 class SubscriptionController extends ControllerBase {
-
 
   /**
    * OG access service.
@@ -30,13 +30,23 @@ class SubscriptionController extends ControllerBase {
   protected $ogAccess;
 
   /**
+   * The messenger service.
+   *
+   * @var \Drupal\Core\Messenger\MessengerInterface
+   */
+  protected $messenger;
+
+  /**
    * Constructs a SubscriptionController object.
    *
    * @param \Drupal\og\OgAccessInterface $og_access
    *   The OG access service.
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
+   *   The messenger service.
    */
-  public function __construct(OgAccessInterface $og_access) {
+  public function __construct(OgAccessInterface $og_access, MessengerInterface $messenger) {
     $this->ogAccess = $og_access;
+    $this->messenger = $messenger;
   }
 
   /**
@@ -44,7 +54,8 @@ class SubscriptionController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('og.access')
+      $container->get('og.access'),
+      $container->get('messenger')
     );
   }
 
@@ -55,14 +66,14 @@ class SubscriptionController extends ControllerBase {
    *   The entity type of the group entity.
    * @param \Drupal\Core\Entity\EntityInterface $group
    *   The entity ID of the group entity.
-   * @param \Drupal\og\OgMembershipTypeInterface $membership_type
+   * @param \Drupal\og\OgMembershipTypeInterface $og_membership_type
    *   The membership type to be used for creating the membership.
    *
    * @return mixed
    *   Redirect user or show access denied if they are not allowed to subscribe,
    *   otherwise provide a subscribe confirmation form.
    */
-  public function subscribe($entity_type_id, EntityInterface $group, OgMembershipTypeInterface $membership_type) {
+  public function subscribe($entity_type_id, EntityInterface $group, OgMembershipTypeInterface $og_membership_type) {
     if (!$group instanceof ContentEntityInterface) {
       // Not a valid entity.
       throw new AccessDeniedHttpException();
@@ -83,12 +94,12 @@ class SubscriptionController extends ControllerBase {
 
       if ($this->config('user.settings')->get('register') === USER_REGISTER_ADMINISTRATORS_ONLY) {
         $params = [':login' => $user_login_url];
-        drupal_set_message($this->t('In order to join any group, you must <a href=":login">login</a>. After you have successfully done so, you will need to request membership again.', $params));
+        $this->messenger->addMessage($this->t('In order to join any group, you must <a href=":login">login</a>. After you have successfully done so, you will need to request membership again.', $params));
       }
       else {
         $user_register_url = Url::fromRoute('user.register', [], $destination)->toString();
         $params = [':register' => $user_register_url, ':login' => $user_login_url];
-        drupal_set_message($this->t('In order to join any group, you must <a href=":login">login</a> or <a href=":register">register</a> a new account. After you have successfully done so, you will need to request membership again.', $params));
+        $this->messenger->addMessage($this->t('In order to join any group, you must <a href=":login">login</a> or <a href=":register">register</a> a new account. After you have successfully done so, you will need to request membership again.', $params));
       }
 
       return new RedirectResponse(Url::fromRoute('user.page')->setAbsolute(TRUE)->toString());
@@ -119,7 +130,7 @@ class SubscriptionController extends ControllerBase {
     }
 
     if ($redirect) {
-      drupal_set_message($message, 'warning');
+      $this->messenger->addMessage($message, 'warning');
       return new RedirectResponse($group->toUrl()->setAbsolute(TRUE)->toString());
     }
 
@@ -127,7 +138,7 @@ class SubscriptionController extends ControllerBase {
       throw new AccessDeniedHttpException();
     }
 
-    $membership = Og::createMembership($group, $user, $membership_type->id());
+    $membership = Og::createMembership($group, $user, $og_membership_type->id());
     $form = $this->entityFormBuilder()->getForm($membership, 'subscribe');
     return $form;
 
@@ -146,13 +157,7 @@ class SubscriptionController extends ControllerBase {
   public function unsubscribe(ContentEntityInterface $group) {
     $user = $this->currentUser();
 
-    $states = [
-      OgMembershipInterface::STATE_ACTIVE,
-      OgMembershipInterface::STATE_PENDING,
-      OgMembershipInterface::STATE_BLOCKED,
-    ];
-
-    if (!$membership = Og::getMembership($group, $user, $states)) {
+    if (!$membership = Og::getMembership($group, $user, OgMembershipInterface::ALL_STATES)) {
       // User is not a member.
       throw new AccessDeniedHttpException();
     }
@@ -164,7 +169,7 @@ class SubscriptionController extends ControllerBase {
 
     if ($group instanceof EntityOwnerInterface && $group->getOwnerId() == $user->id()) {
       // The user is the manager of the group.
-      drupal_set_message($this->t('As the manager of %group, you can not leave the group.', ['%group' => $group->label()]));
+      $this->messenger->addMessage($this->t('As the manager of %group, you can not leave the group.', ['%group' => $group->label()]));
 
       return new RedirectResponse($group->toUrl()
         ->setAbsolute()

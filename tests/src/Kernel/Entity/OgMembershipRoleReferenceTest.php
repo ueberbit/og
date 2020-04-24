@@ -20,11 +20,12 @@ class OgMembershipRoleReferenceTest extends KernelTestBase {
    * {@inheritdoc}
    */
   public static $modules = [
-    'og',
     'field',
     'node',
-    'user',
+    'og',
+    'options',
     'system',
+    'user',
   ];
 
   /**
@@ -59,7 +60,7 @@ class OgMembershipRoleReferenceTest extends KernelTestBase {
     $this->installEntitySchema('og_membership');
     $this->installEntitySchema('user');
     $this->installEntitySchema('node');
-    $this->installSchema('system', 'sequences');
+    $this->installSchema('system', ['sequences']);
 
     // Create a "group" node type and turn it into a group type.
     $this->groupBundle = mb_strtolower($this->randomMachineName());

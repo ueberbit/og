@@ -26,6 +26,7 @@ class OgDeleteOrphansTest extends KernelTestBase {
     'entity_reference',
     'node',
     'og',
+    'options',
   ];
 
   /**
@@ -60,8 +61,8 @@ class OgDeleteOrphansTest extends KernelTestBase {
     $this->installEntitySchema('og_membership');
     $this->installEntitySchema('user');
     $this->installEntitySchema('node');
-    $this->installSchema('node', 'node_access');
-    $this->installSchema('system', ['queue', 'sequences']);
+    $this->installSchema('node', ['node_access']);
+    $this->installSchema('system', ['sequences']);
 
     /** @var \Drupal\og\OgDeleteOrphansPluginManager $plugin_manager */
     $plugin_manager = \Drupal::service('plugin.manager.og.delete_orphans');
